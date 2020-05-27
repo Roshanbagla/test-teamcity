@@ -1,21 +1,24 @@
-﻿#$ErrorActionPreference = "Stop"
-$currentScriptDirectory = pwd
+﻿#####################################################
+# Variables defined for APS test site
+#####################################################
+
+param(
+    [Parameter(Mandatory=$true)][int]$SiteID,
+    [Parameter(Mandatory=$true)][int]$SiteControllerSerialNo,
+    [Parameter(Mandatory=$true)][string]$component,
+    [Parameter(Mandatory=$true)][string]$address
+)
+
+#$ErrorActionPreference = "Stop"
 
 #################################################################
 # Includes.
 #################################################################
 
 
-[Reflection.Assembly]::LoadFile("$currentScriptDirectory\Maxgaming.Cougar.Message.dll") > $nul
-[Reflection.Assembly]::LoadFile("$currentScriptDirectory\Maxgaming.Cougar.Interface.dll") > $nul
-
-#####################################################
-# Variables defined for APS test site
-#####################################################
-
-$SiteID = 10002
-$SiteControllerSerialNo = 23032307
-$component = "PAD"
+[Reflection.Assembly]::LoadFile("$PSScriptRoot\Maxgaming.Cougar.Message.dll")
+[Reflection.Assembly]::LoadFile("$PSScriptRoot\Maxgaming.Cougar.Interface.dll")
+Write-host ("The root directory: $PSScriptRoot")
 
 
 ################################################################
@@ -29,28 +32,28 @@ function SendRefreshConfigMessage ($VenueID) {
 
   # Get type.
   $type = [Maxgaming.Cougar.Message.RefreshConfig]::PostOfficeFunction
- 
+
   # Publish.
   $pomClient.Publish($type, $RefreshConfigmessage.GetBytes(), 7) > $nul
-} 
+}
 
 
 ################################################################
 #    Function to send a stop/start cougar message.
-################################################################ 
+################################################################
 
 
 function RestartComponents ($VenueID, $SiteControllerSerialNo, $CougarComponent) {
-  
+
   $StopMessage = New-Object Maxgaming.Cougar.Message.StopComponent
   $StopMessage.SiteID = $VenueID
   $StopMessage.SCSerialNumber = $SiteControllerSerialNo
-  $StopMessage.Component = $CouagrComponent
+  $StopMessage.Component = $CougarComponent
   $StopMessage.Flags = 1                        # if Flag = 1, it will start the component automatically.
 
   # Get type.
   $type = [Maxgaming.Cougar.Message.StopComponent]::PostOfficeFunction
- 
+
   # Publish.
   $pomClient.Publish($type, $StopMessage.GetBytes(), 7) > $nul
   # Disconnect.
@@ -58,8 +61,8 @@ function RestartComponents ($VenueID, $SiteControllerSerialNo, $CougarComponent)
 }
 
 
-################################################################# 
-#   Creating POM Connection 
+#################################################################
+#   Creating POM Connection
 #################################################################
 
 
@@ -67,11 +70,11 @@ function createPOMConnection ($address) {
   Write-Host "Connecting to POM" -ForegroundColor Yellow
   $pomClient = New-Object Maxgaming.Cougar.Interface.Connection.POMConnection
 
-  if ($pomClient.Connect("Restart", $address, 808, [Maxgaming.Cougar.Interface.Connection.ConnectionFlags].POMCF_VOLATILE) -eq $true) {  
+  if ($pomClient.Connect("Restart", $address, 808, [Maxgaming.Cougar.Interface.Connection.ConnectionFlags].POMCF_VOLATILE) -eq $true) {
     Write-Host "Connected to POM...`n" -ForegroundColor Green
-    
+
     SendRefreshConfigMessage $SiteID
-    
+
     RestartComponents $SiteID $SiteControllerSerialNo $component
   }
   else {
@@ -79,9 +82,9 @@ function createPOMConnection ($address) {
     return
   }
   # Cleanup.
-  $pomClient.Dispose() 
+  $pomClient.Dispose()
 }
- 
+
 #################################################################
 #                     Process Starts Here
 #################################################################
@@ -91,10 +94,10 @@ $IpAddresses = New-Object System.Collections.Generic.List`[string]
 
 # Add Ip addresses of the Site Contorllers into the list below:
 
-$IpAddresses.Add("x.x.x.x")
+$IpAddresses.Add($address)
 
 
-# Pinging an IP address. {  
+# Pinging an IP address. {
 if (test-connection $IpAddresses -count 1 -quiet) {
   write-host $IpAddresses "Ping succeeded." -foreground green
   createPOMConnection($IpAddresses)
@@ -102,5 +105,4 @@ if (test-connection $IpAddresses -count 1 -quiet) {
 else {
   Write-Host "Cannot Ping the Site Controller:" $IpAddresses  -ForegroundColor Red
   return
-} 
-
+}
